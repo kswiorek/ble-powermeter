@@ -55,7 +55,7 @@ double angle;
 float reg[160];
 bool test;
 bool tareTest = true;
-int samples, cnt, tareCnt;
+int samples, cnt, tareCnt, offCnt;
 int8_t tare;
 long avgFin;
 class MyServerCallbacks : public BLEServerCallbacks {
