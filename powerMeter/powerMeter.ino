@@ -5,15 +5,16 @@
 #include <math.h>
 #include <EEPROM.h>
 
-#define sensMax 1553300.0
-#define sensMin 1378800.0
-#define weightMax 160.0
-#define radius 0.175
-#define sensRadius 0.095
+// the .0 is important, so the macro inserts it as float
+#define sensMax 1553300.0 // The loadcell reading with weightMax of force
+#define sensMin 1378800.0 // The loadcell reading with 0 force
+#define weightMax 160.0	// weight for calibration
+#define radius 0.175	// radius of the crank
+#define sensRadius 0.095// distance of the MPU from the center
 
-#define zeroAngle 180
+#define zeroAngle 180 // the angle, where you want to tare - all angles are according to the CPS service specification
 
-#define freq 0.5
+#define freq 0.5 //the update frequency, if your device can cope with it, you can increase it to 1 or 2
 
 #define LOADCELL_DOUT_PIN 16
 #define LOADCELL_SCK_PIN 17
@@ -26,20 +27,16 @@ HX711 scale;
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
-#define cyclingPowerService BLEUUID((uint16_t)0x1818)
-BLECharacteristic cyclingPowerLocationCharacteristic(BLEUUID((uint16_t)0x2A5D), BLECharacteristic::PROPERTY_READ);
+#define cyclingPowerService BLEUUID((uint16_t)0x1818) //uuid for the CPS from the BLE GATT website
+
+// required characteristcs according to the CPS specification
+BLECharacteristic cyclingPowerLocationCharacteristic(BLEUUID((uint16_t)0x2A5D), BLECharacteristic::PROPERTY_READ); 
 BLECharacteristic cyclingPowerFeatureCharacteristic(BLEUUID((uint16_t)0x2A65), BLECharacteristic::PROPERTY_READ);
 BLECharacteristic cyclingPowerMeasurementCharacteristic(BLEUUID((uint16_t)0x2A63), BLECharacteristic::PROPERTY_NOTIFY);
 
-
-
-/*
- * Bunch of globals
- */
 uint16_t powerOut = 100;  // W, decimal
-//uint32_t cumulativeRevOut = 0; // Revolutions, binary
-//uint16_t lastRevTime = 0; // s, since last rev, binary
-//uint16_t totalEnergy = 0; // kJ, decimal
+
+// all the required definitions in binary
 uint16_t cyclingPowerMeasurementCharacteristicDef = 0b0000000000100000; // cycle power config flags
 bool _BLEClientConnected = false;
 uint8_t cyclingPowerMeasurementCharacteristicData[8] = {(uint8_t)(cyclingPowerMeasurementCharacteristicDef & 0xff), (uint8_t)(cyclingPowerMeasurementCharacteristicDef >> 8),    // flags 
@@ -181,6 +178,11 @@ void loop() {
   
 	if (cnt >= (int(80 / freq)))
 	{
+		if (!_BLEClientConnected) offCnt++;
+      		else offCnt = 0;
+    
+      		if (offCnt > 60*freq) esp_deep_sleep_start();
+		
 		uint16_t timeOut = map(millis(), 0, 1000, 0, 1024);
 		
 		cumCrankRev += abs(((millis() - timeOld)*rpm) / 600);
