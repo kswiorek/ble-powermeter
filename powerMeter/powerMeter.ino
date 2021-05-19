@@ -56,7 +56,7 @@ float reg[160];
 bool test;
 bool tareTest = true;
 int samples, cnt, tareCnt, offCnt;
-int8_t tare;
+int16_t tare;
 long avgFin;
 class MyServerCallbacks : public BLEServerCallbacks {
 	void onConnect(BLEServer* pServer) {
