@@ -6,9 +6,9 @@
 #include <EEPROM.h>
 
 // the .0 is important, so the macro inserts it as float
-#define sensMax 1553300.0 // The loadcell reading with weightMax of force
-#define sensMin 1378800.0 // The loadcell reading with 0 force
-#define weightMax 160.0	// weight for calibration
+#define sensMax -259489.0 // The loadcell reading with weightMax of force
+#define sensMin -3021.0 // The loadcell reading with 0 force
+#define weightMax 120.0	// weight for calibration
 #define radius 0.175	// radius of the crank
 #define sensRadius 0.095// distance of the MPU from the center
 
@@ -108,8 +108,9 @@ void setup() {
 
 	pinMode(5, OUTPUT);	  // tare LED setup
 	digitalWrite(5, HIGH);
-	EEPROM.begin(1);		//read tare
+	EEPROM.begin(2);		//read tare
 	tare = EEPROM.read(0); 
+  tare = tare + (EEPROM.read(1)<<8); 
 }
 uint8_t blink;
 long timeOld;
@@ -137,6 +138,7 @@ void loop() {
 		{
 			tare = weight;
 			EEPROM.write(0, tare);
+      EEPROM.write(1, tare>>8);
 			EEPROM.commit();
 			digitalWrite(5, LOW);
 			delay(1000);
@@ -230,6 +232,11 @@ void loop() {
 		Serial.print(" Wartość: ");
 		Serial.print(reading);
 		Serial.print("   ");
+
+		
+   		Serial.print(" Tara: ");
+    		Serial.print(tare);
+    		Serial.print("   ");
   
   
 		Serial.println();
