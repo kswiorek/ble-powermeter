@@ -67,7 +67,7 @@ int samples, cnt, tareCnt, offCnt, rc, pos;  //counters
 int16_t tare;
 long avgFin, j;
 uint8_t blink;
-long timeOld;
+long timeOld, timeNow, timeTmp;
 uint16_t cumCrankRevHi, cumCrankRevLow, cumCrankRevInc, cumCrankRev;
 uint16_t timeOutInc, timeOut, timeOutDec;
 sensors_event_t a, g, temp;
@@ -191,7 +191,7 @@ void loop() {
   reg[rc] = power;
   
   rpm = abs((g.gyro.z / (2*M_PI)) * 60);    // MOVED UP. calc of current rpm from angular velocity. ABS() here once, it's doesn't metter wich direction pedals turning
-  avgRpm += rpm; // avgRpm sum for average calc
+  avgRpm += constrain(rpm, 0, 200); // avgRpm sum for average calc
   
   samples = 4800 / rpm;          // avoid use functions inside constrain(), devision by zero rpm=0 ?????
   samples = constrain(samples, 1, 160);    // limit samples value to fit to reg[] array size (4800= 80Hz(hx711)*60 (measurements count))
@@ -211,10 +211,13 @@ void loop() {
     if (offCnt > 60*freq) esp_deep_sleep_start();  // go to deep sleep after 0.5 minute of no BLE connection as i think
             
     avgRpm = avgRpm / cnt;
+
+    timeNow = millis();
     
-    cumCrankRevInc = ((millis() - timeOld)*avgRpm) / 600;  // increment value of cumulative crunk revolutions value x100    
+    cumCrankRevInc = ((timeNow - timeOld)*avgRpm) / 600;  // increment value of cumulative crunk revolutions value x100    
     cumCrankRevHi = trunc((cumCrankRevLow + cumCrankRevInc) / 100);         // count of full revolutions, counting partial rev from last calculation
-    timeOutDec = (((cumCrankRevLow / avgRpmPrev) * 60 * 1000) / 100);       // calc of step back for erlier turned part of crank revolution
+    //timeOutDec = (((cumCrankRevLow / avgRpmPrev) * 60 * 1000) / 100);       // calc of step back for erlier turned part of crank revolution  // devision by zero!!!!!!!!!!!!!!!!!!!!!!!!!
+    (avgRpmPrev < 1) ? (timeOutDec = 0) : (timeOutDec = (((cumCrankRevLow / avgRpmPrev) * 60 * 1000) / 100)); // calc of step back for erlier turned part of crank revolution
     cumCrankRevLow = (cumCrankRevLow + cumCrankRevInc) % 100;               // update of partial rev value
     cumCrankRev += cumCrankRevHi;                                           // inc cummulative revolutions count
     
@@ -229,10 +232,12 @@ void loop() {
       Serial.println(cumCrankRev);
     }
 
-    timeOut = timeOld - timeOutDec + ((cumCrankRevHi / avgRpm) * 60 * 1000);// time of last revolution, based on last calc time minus time of prev partial rev plus time of current revs
-    timeOut = map(timeOut, 0, 1000, 0, 1023) % 65536;                       // stretching time for BLE spec
+    if (avgRpm >= 1) {
+      timeTmp = timeOld - timeOutDec + ((cumCrankRevHi / avgRpm) * 60 * 1000);// time of last revolution, based on last calc time minus time of prev partial rev plus time of current revs
+      timeOut = map(timeTmp, 0, 1000, 0, 1023) % 65536;                       // stretching time for BLE spec
+    }    
     
-    timeOld = millis();     // update time of last send        
+    timeOld = timeNow;     // update time of last send        
     if (DEBUG) {
       Serial.print("TimeOld:  ");
       Serial.print(timeOld);
